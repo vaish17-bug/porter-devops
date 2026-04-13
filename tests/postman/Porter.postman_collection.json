@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "Porter Delivery System API",
+    "description": "Complete API collection for Mini Porter microservices",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User Service",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Raj Kumar\", \"email\": \"raj@example.com\", \"phone\": \"9876543210\", \"password\": \"password123\"}"
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"raj@example.com\", \"password\": \"password123\"}"
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/profile",
+            "header": {
+              "Authorization": "Bearer {{token}}"
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5001/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking Service",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}:5002/bookings",
+            "header": {
+              "Authorization": "Bearer {{token}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userId\": \"{{userId}}\", \"pickup\": {\"name\": \"Airport\", \"latitude\": 28.5562, \"longitude\": 77.1000}, \"drop\": {\"name\": \"City Center\", \"latitude\": 28.6273, \"longitude\": 77.1854}}"
+            }
+          }
+        },
+        {
+          "name": "Get Booking",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5002/bookings/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Get User Bookings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5002/bookings/user/{{userId}}"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5002/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Driver Service",
+      "item": [
+        {
+          "name": "Get All Drivers",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5003/drivers"
+          }
+        },
+        {
+          "name": "Create Driver",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}:5003/drivers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Priya Singh\", \"phone\": \"9876543211\", \"vehicleType\": \"auto\"}"
+            }
+          }
+        },
+        {
+          "name": "Assign Driver",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}:5003/drivers/assign/{{bookingId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bookingId\": \"{{bookingId}}\", \"pickupLat\": 28.5562, \"pickupLon\": 77.1000}"
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5003/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking Service",
+      "item": [
+        {
+          "name": "Start Tracking",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}:5004/tracking/start/{{bookingId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"driverId\": \"{{driverId}}\", \"pickupLat\": 28.5562, \"pickupLon\": 77.1000, \"dropLat\": 28.6273, \"dropLon\": 77.1854}"
+            }
+          }
+        },
+        {
+          "name": "Get Tracking",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5004/tracking/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5004/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification Service",
+      "item": [
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}:5005/notifications/send",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bookingId\": \"{{bookingId}}\", \"userId\": \"{{userId}}\", \"status\": \"Picked Up\", \"location\": {\"latitude\": 28.5562, \"longitude\": 77.1000}}"
+            }
+          }
+        },
+        {
+          "name": "Get Booking Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5005/notifications/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5005/notifications/user/{{userId}}"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}:5005/health"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "driverId",
+      "value": ""
+    }
+  ]
+}
