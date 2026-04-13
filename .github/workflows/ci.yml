@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   test-and-build:
@@ -55,7 +55,7 @@ jobs:
     - name: Build Docker Images
       run: |
         echo "✅ Building Docker images"
-        docker-compose build
+        docker compose build
 
     - name: Generate Test Report
       run: echo "All tests passed on $(date)" > test-report.txt
