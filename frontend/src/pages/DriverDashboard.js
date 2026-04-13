@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 
@@ -9,7 +9,7 @@ const DriverDashboard = () => {
   const [error, setError] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const fetchDriverProfile = async () => {
+  const fetchDriverProfile = useCallback(async () => {
     if (!user?.phone) {
       setLoading(false);
       return;
@@ -30,11 +30,11 @@ const DriverDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.phone, token]);
 
   useEffect(() => {
     fetchDriverProfile();
-  }, [user?.phone]);
+  }, [fetchDriverProfile]);
 
   const toggleAvailability = async () => {
     if (!driver?.driverId) {
