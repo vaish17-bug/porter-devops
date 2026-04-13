@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 import TrackingMap from '../components/TrackingMap';
@@ -15,9 +15,21 @@ const Tracking = ({ bookingId: paramBookingId }) => {
   const statusFlow = ['Order Placed', 'Picked Up', 'In Transit', 'Delivered'];
   const formatStatus = (status) => (status === 'In Transit' ? 'In Progress' : status);
 
+  const fetchUserBookings = useCallback(async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5002/bookings/user/${user?.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setBookings(response.data.bookings);
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  }, [user?.id, token]);
+
   useEffect(() => {
     fetchUserBookings();
-  }, [user?.id, token]);
+  }, [fetchUserBookings]);
 
   useEffect(() => {
     if (!bookingId) {
@@ -63,18 +75,6 @@ const Tracking = ({ bookingId: paramBookingId }) => {
 
     fetchDriverInfo();
   }, [tracking?.driverId, token]);
-
-  const fetchUserBookings = async () => {
-    try {
-      const response = await axios.get(
-        `http://localhost:5002/bookings/user/${user?.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setBookings(response.data.bookings);
-    } catch (err) {
-      console.error('Error:', err);
-    }
-  };
 
   const handleTrackBooking = async (e) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 import LocationAutocomplete from '../components/LocationAutocomplete';
@@ -12,11 +12,7 @@ const Booking = () => {
   const [success, setSuccess] = useState('');
   const [bookings, setBookings] = useState([]);
 
-  useEffect(() => {
-    fetchUserBookings();
-  }, []);
-
-  const fetchUserBookings = async () => {
+  const fetchUserBookings = useCallback(async () => {
     try {
       const response = await axios.get(
         `http://localhost:5002/bookings/user/${user?.id}`,
@@ -26,7 +22,11 @@ const Booking = () => {
     } catch (err) {
       console.error('Error fetching bookings:', err);
     }
-  };
+  }, [user?.id, token]);
+
+  useEffect(() => {
+    fetchUserBookings();
+  }, [fetchUserBookings]);
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
