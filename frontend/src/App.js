@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Booking from './pages/Booking';
+import BookingHistory from './pages/BookingHistory';
 import Tracking from './pages/Tracking';
 import DriverDashboard from './pages/DriverDashboard';
 
@@ -30,6 +31,7 @@ function App() {
           
           <Route element={<PrivateRoute allowedRoles={['user']} />}>
             <Route path="/bookings" element={<Booking />} />
+            <Route path="/bookings/history" element={<BookingHistory />} />
             <Route path="/tracking" element={<Tracking />} />
           </Route>
 

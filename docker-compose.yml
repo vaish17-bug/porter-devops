@@ -84,6 +84,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/porter_dev
       NOTIFICATION_SERVICE_URL: http://notification-service:5005
       DRIVER_SERVICE_URL: http://driver-service:5003
+      BOOKING_SERVICE_URL: http://booking-service:5002
     depends_on:
       mongodb:
         condition: service_healthy

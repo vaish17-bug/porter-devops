@@ -20,9 +20,28 @@ const BookingSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number
   },
+  receiver: {
+    name: String,
+    phone: String,
+    address: String
+  },
+  parcelWeightKg: {
+    type: Number,
+    min: 0
+  },
+  serviceType: {
+    type: String,
+    enum: ['bike', 'small_tempo', 'truck']
+  },
+  fareBreakdown: {
+    baseFare: Number,
+    distanceFare: Number,
+    weightFare: Number,
+    totalFare: Number
+  },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in_transit', 'delivered', 'cancelled'],
+    enum: ['pending', 'pending_driver', 'confirmed', 'in_transit', 'delivered', 'cancelled'],
     default: 'pending'
   },
   driverId: String,

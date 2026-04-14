@@ -14,7 +14,7 @@ const Navbar = () => {
   return (
     <nav style={styles.navbar}>
       <div style={styles.container}>
-        <Link to="/" style={styles.logo}>🚚 Porter</Link>
+        <Link to="/" style={styles.logo}>🚚 ShipEase</Link>
         <div style={styles.links}>
           {user ? (
             <>
@@ -23,6 +23,7 @@ const Navbar = () => {
               ) : (
                 <>
                   <Link to="/bookings" style={styles.link}>Bookings</Link>
+                  <Link to="/bookings/history" style={styles.link}>History</Link>
                   <Link to="/tracking" style={styles.link}>Tracking</Link>
                 </>
               )}

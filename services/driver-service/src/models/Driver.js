@@ -17,8 +17,8 @@ const DriverSchema = new mongoose.Schema({
   },
   vehicleType: {
     type: String,
-    enum: ['bike', 'auto', 'car'],
-    default: 'bike'
+    enum: ['bike', 'auto', 'car', 'two_wheeler', 'small_tempo', 'truck'],
+    default: 'two_wheeler'
   },
   isAvailable: {
     type: Boolean,
