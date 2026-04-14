@@ -214,21 +214,3 @@ cd frontend && npm install && npm start
 | Message queue (RabbitMQ) | Future |
 | Kubernetes deployment | Future |
 
-## 🤝 Team Roles
-
-- **Backend:** Microservices development, API contracts
-- **Frontend:** React UI, location selection, live tracking
-- **DevOps:** Docker Compose, CI/CD pipeline, deployment
-
-## 📞 Contact & Support
-
-For issues or questions:
-- Check [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
-- Review service logs: `docker-compose logs service-name`
-- Verify all services healthy: `GET /health` on each service
-
----
-
-**Submission Date:** Wednesday (Deadline)  
-**Project Status:** Ready for Demo ✅
->>>>>>> main
