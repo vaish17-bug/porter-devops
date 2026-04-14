@@ -13,9 +13,19 @@ jest.mock('../models/Driver', () => ({
   findByIdAndUpdate: jest.fn()
 }));
 
+jest.mock('../models/DriverOffer', () => ({
+  create: jest.fn(),
+  findOne: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+  updateMany: jest.fn(),
+  find: jest.fn(),
+  countDocuments: jest.fn()
+}));
+
 const request = require('supertest');
 const app = require('../index');
 const Driver = require('../models/Driver');
+const DriverOffer = require('../models/DriverOffer');
 
 describe('Driver Service routes', () => {
   beforeEach(() => {
@@ -73,6 +83,11 @@ describe('Driver Service routes', () => {
   });
 
   it('assigns only compatible vehicle for selected service', async () => {
+    app.set('onlineDriverCounts', new Map([
+      ['bike-driver', 1],
+      ['auto-driver', 1]
+    ]));
+
     Driver.find.mockResolvedValue([
       {
         _id: 'bike-driver-id',
@@ -97,7 +112,21 @@ describe('Driver Service routes', () => {
         }
       }
     ]);
-    Driver.findByIdAndUpdate.mockResolvedValue({});
+    DriverOffer.create.mockResolvedValue({
+      offerId: 'offer-123',
+      bookingId: 'booking-123',
+      driverId: 'auto-driver',
+      driverName: 'Auto Driver',
+      driverPhone: '9990002222',
+      vehicleType: 'auto',
+      pickup: { latitude: 28.55, longitude: 77.1 },
+      drop: { latitude: 28.6, longitude: 77.2 },
+      serviceType: 'small_tempo',
+      parcelWeightKg: 12,
+      fareBreakdown: { totalFare: 100 },
+      distanceKm: 1.23,
+      expiresAt: new Date()
+    });
 
     const response = await request(app)
       .post('/drivers/assign/booking-123')
@@ -111,9 +140,13 @@ describe('Driver Service routes', () => {
       });
 
     expect(response.status).toBe(200);
-    expect(response.body.assigned).toBe(true);
-    expect(response.body.driver.vehicleType).toBe('auto');
-    expect(response.body.driver.driverId).toBe('auto-driver');
-    expect(Driver.findByIdAndUpdate).toHaveBeenCalledWith('auto-driver-id', { isAvailable: false });
+    expect(response.body.assigned).toBe(false);
+    expect(response.body.offersCreated).toBe(1);
+    expect(DriverOffer.create).toHaveBeenCalledWith(expect.objectContaining({
+      bookingId: 'booking-123',
+      driverId: 'auto-driver',
+      vehicleType: 'auto',
+      serviceType: 'small_tempo'
+    }));
   });
 });

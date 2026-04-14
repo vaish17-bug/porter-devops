@@ -37,7 +37,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
   }, [fetchUserBookings]);
 
   useEffect(() => {
-    if (!bookingId) {
+    if (!bookingId || !tracking) {
       return undefined;
     }
 
@@ -54,7 +54,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [bookingId, token]);
+  }, [bookingId, tracking, token]);
 
   useEffect(() => {
     const fetchDriverInfo = async () => {
