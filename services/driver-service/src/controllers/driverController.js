@@ -15,6 +15,12 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+const SERVICE_TO_VEHICLE = {
+  bike: ['bike', 'two_wheeler'],
+  small_tempo: ['auto', 'small_tempo'],
+  truck: [ 'truck']
+};
+
 const getAllDrivers = async (req, res) => {
   try {
     const drivers = await Driver.find();
@@ -22,6 +28,23 @@ const getAllDrivers = async (req, res) => {
   } catch (error) {
     console.error('Get Drivers Error:', error);
     res.status(500).json({ message: 'Failed to fetch drivers', error: error.message });
+  }
+};
+
+const getDriverProfile = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    const driver = await Driver.findOne({ driverId });
+
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    res.status(200).json({ driver });
+  } catch (error) {
+    console.error('Get Driver Profile Error:', error);
+    res.status(500).json({ message: 'Failed to fetch driver profile', error: error.message });
   }
 };
 
@@ -55,12 +78,16 @@ const createDriver = async (req, res) => {
 
 const assignDriver = async (req, res) => {
   try {
-    const { bookingId, pickupLat, pickupLon, dropLat, dropLon } = req.body;
+    const { bookingId, pickupLat, pickupLon, dropLat, dropLon, serviceType } = req.body;
 
     // Get available drivers
     const availableDrivers = await Driver.find({ isAvailable: true });
+    const allowedVehicles = SERVICE_TO_VEHICLE[serviceType] || null;
+    const eligibleDrivers = allowedVehicles
+      ? availableDrivers.filter((driver) => allowedVehicles.includes(driver.vehicleType))
+      : availableDrivers;
 
-    if (availableDrivers.length === 0) {
+    if (eligibleDrivers.length === 0) {
       console.warn('⚠️ No available drivers for booking:', bookingId);
       return res.status(200).json({ 
         message: 'No drivers available',
@@ -69,7 +96,7 @@ const assignDriver = async (req, res) => {
     }
 
     // Sort by distance to pickup
-    const driversWithDistance = availableDrivers.map(driver => ({
+    const driversWithDistance = eligibleDrivers.map(driver => ({
       ...driver.toObject(),
       distance: calculateDistance(
         driver.currentLocation.latitude,
@@ -151,6 +178,38 @@ const releaseDriver = async (req, res) => {
   }
 };
 
+const updateLocation = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const { latitude, longitude } = req.body;
+
+    const parsedLatitude = Number(latitude);
+    const parsedLongitude = Number(longitude);
+
+    if (!Number.isFinite(parsedLatitude) || !Number.isFinite(parsedLongitude)) {
+      return res.status(400).json({ message: 'latitude and longitude must be valid numbers' });
+    }
+
+    const driver = await Driver.findOneAndUpdate(
+      { driverId },
+      { currentLocation: { latitude: parsedLatitude, longitude: parsedLongitude } },
+      { new: true }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+
+    res.status(200).json({
+      message: 'Driver location updated',
+      driver
+    });
+  } catch (error) {
+    console.error('Update Location Error:', error);
+    res.status(500).json({ message: 'Failed to update location', error: error.message });
+  }
+};
+
 const updateAvailability = async (req, res) => {
   try {
     const { driverId } = req.params;
@@ -182,8 +241,10 @@ const updateAvailability = async (req, res) => {
 
 module.exports = {
   getAllDrivers,
+  getDriverProfile,
   createDriver,
   assignDriver,
   releaseDriver,
-  updateAvailability
+  updateAvailability,
+  updateLocation
 };

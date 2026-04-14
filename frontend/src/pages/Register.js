@@ -8,15 +8,51 @@ const Register = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
-  const [vehicleType, setVehicleType] = useState('bike');
+  const [vehicleType, setVehicleType] = useState('two_wheeler');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const navigate = useNavigate();
+
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  const isValidPhone = (value) => /^\d{10}$/.test(value);
+
+  const handleEmailChange = (value) => {
+    setEmail(value);
+    if (!value) {
+      setEmailError('');
+      return;
+    }
+    setEmailError(isValidEmail(value) ? '' : 'Please enter a valid email address');
+  };
+
+  const handlePhoneChange = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 10);
+    setPhone(cleaned);
+    if (!cleaned) {
+      setPhoneError('');
+      return;
+    }
+    setPhoneError(isValidPhone(cleaned) ? '' : 'Phone number must be exactly 10 digits');
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      setError('Phone number must be exactly 10 digits');
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.post(
@@ -38,15 +74,25 @@ const Register = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>🚚 Porter</h1>
+        <h1 style={styles.title}>🚚 ShipEase</h1>
         <h2 style={styles.subtitle}>Register</h2>
         
         {error && <div style={styles.error}>{error}</div>}
         
         <form onSubmit={handleRegister}>
           <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} required />
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={styles.input} required />
-          <input type="tel" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} style={styles.input} required />
+          <input type="email" placeholder="Email" value={email} onChange={(e) => handleEmailChange(e.target.value)} style={styles.input} required />
+          {email && (
+            <p style={{ ...styles.helper, color: emailError ? '#b71c1c' : '#0a7a2f' }}>
+              {emailError || 'Valid email address'}
+            </p>
+          )}
+          <input type="tel" placeholder="Phone" value={phone} onChange={(e) => handlePhoneChange(e.target.value)} style={styles.input} required />
+          {phone && (
+            <p style={{ ...styles.helper, color: phoneError ? '#b71c1c' : '#0a7a2f' }}>
+              {phoneError || 'Valid 10-digit phone number'}
+            </p>
+          )}
 
           <div style={styles.roleWrap}>
             <label style={styles.roleLabel}>Register As</label>
@@ -78,13 +124,13 @@ const Register = () => {
               onChange={(e) => setVehicleType(e.target.value)}
               style={styles.input}
             >
-              <option value="bike">Bike</option>
-              <option value="auto">Auto</option>
-              <option value="car">Car</option>
+              <option value="two_wheeler">2 Wheeler</option>
+              <option value="small_tempo">Small Tempo</option>
+              <option value="truck">Truck</option>
             </select>
           )}
 
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} required />
+          <input type="password" placeholder="Password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} minLength={6} required />
           <button type="submit" style={styles.button} disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
         </form>
 
@@ -108,6 +154,7 @@ const styles = {
   input: { width: '100%', padding: '10px', marginBottom: '15px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px', boxSizing: 'border-box' },
   button: { width: '100%', padding: '10px', backgroundColor: '#FF6B35', color: 'white', border: 'none', borderRadius: '4px', fontSize: '16px', cursor: 'pointer' },
   error: { color: 'red', marginBottom: '15px', padding: '10px', backgroundColor: '#ffe6e6', borderRadius: '4px' },
+  helper: { marginTop: '-8px', marginBottom: '10px', fontSize: '13px' },
   link: { textAlign: 'center', marginTop: '15px' },
   anchor: { color: '#FF6B35', textDecoration: 'none' }
 };

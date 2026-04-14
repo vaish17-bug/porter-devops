@@ -26,6 +26,28 @@ const notifyStatusChange = async (bookingId, status, location) => {
   }
 };
 
+const TRACKING_TO_BOOKING_STATUS = {
+  'Order Placed': 'confirmed',
+  'Picked Up': 'in_transit',
+  'In Transit': 'in_transit',
+  Delivered: 'delivered'
+};
+
+const syncBookingStatus = async (bookingId, trackingStatus) => {
+  const mappedStatus = TRACKING_TO_BOOKING_STATUS[trackingStatus];
+  if (!mappedStatus || !process.env.BOOKING_SERVICE_URL) {
+    return;
+  }
+
+  try {
+    await axios.patch(`${process.env.BOOKING_SERVICE_URL}/bookings/${bookingId}/status`, {
+      status: mappedStatus
+    });
+  } catch (error) {
+    console.warn('⚠️ Booking status sync failed:', error.message);
+  }
+};
+
 const getStatusFromProgress = (progress) => {
   if (progress < 0.2) return 'Order Placed';
   if (progress < 0.4) return 'Picked Up';
@@ -79,6 +101,7 @@ const simulateTracking = (bookingId) => {
           timestamp: new Date(),
           location: tracking.currentLocation
         });
+        await syncBookingStatus(bookingId, status);
         await notifyStatusChange(bookingId, status, tracking.currentLocation);
       }
 

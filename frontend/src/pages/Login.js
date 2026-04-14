@@ -38,7 +38,7 @@ const Login = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>🚚 Porter</h1>
+        <h1 style={styles.title}>🚚 ShipEase</h1>
         <h2 style={styles.subtitle}>Login</h2>
         
         {error && <div style={styles.error}>{error}</div>}

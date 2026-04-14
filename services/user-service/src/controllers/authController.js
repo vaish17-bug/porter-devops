@@ -18,6 +18,10 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
     if (!['user', 'driver'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role selected' });
     }
@@ -57,6 +61,9 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Register Error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Registration failed', error: error.message });
   }
 };

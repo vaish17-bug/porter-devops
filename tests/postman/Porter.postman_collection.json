@@ -128,6 +128,7 @@
                 "exec": [
                   "const response = pm.response.json();",
                   "if (response.booking && response.booking.bookingId) { pm.collectionVariables.set('bookingId', response.booking.bookingId); }",
+                  "pm.test('service type present', function () { pm.expect(response.booking.serviceType).to.exist; });",
                   "pm.test('booking created', function () { pm.response.to.have.status(201); });"
                 ]
               }
@@ -142,7 +143,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"userId\": \"{{userId}}\", \"pickup\": {\"name\": \"Airport\", \"latitude\": 28.5562, \"longitude\": 77.1000}, \"drop\": {\"name\": \"City Center\", \"latitude\": 28.6273, \"longitude\": 77.1854}}"
+              "raw": "{\"userId\": \"{{userId}}\", \"pickup\": {\"name\": \"Airport\", \"latitude\": 28.5562, \"longitude\": 77.1000}, \"drop\": {\"name\": \"City Center\", \"latitude\": 28.6273, \"longitude\": 77.1854}, \"receiver\": {\"name\": \"Receiver Demo\", \"phone\": \"9998887776\"}, \"parcelWeightKg\": 4, \"serviceType\": \"bike\"}"
             }
           }
         },
