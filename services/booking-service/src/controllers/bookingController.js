@@ -139,7 +139,10 @@ const createBooking = async (req, res) => {
         pickupLat: pickup.latitude,
         pickupLon: pickup.longitude,
         dropLat: drop.latitude,
-        dropLon: drop.longitude
+        dropLon: drop.longitude,
+        pickup,
+        drop,
+        fareBreakdown
       });
 
       if (assignmentResponse.data?.assigned) {
@@ -228,9 +231,48 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
+const assignDriverToBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { driverId, status = 'confirmed', expectedStatus = 'pending_driver' } = req.body;
+
+    if (!driverId) {
+      return res.status(400).json({ message: 'driverId is required' });
+    }
+
+    const booking = await Booking.findOneAndUpdate(
+      {
+        bookingId,
+        status: expectedStatus
+      },
+      {
+        driverId,
+        status,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+
+    if (!booking) {
+      return res.status(409).json({
+        message: 'Booking is not available for driver assignment'
+      });
+    }
+
+    res.status(200).json({
+      message: 'Driver assigned to booking',
+      booking
+    });
+  } catch (error) {
+    console.error('Assign Driver To Booking Error:', error);
+    res.status(500).json({ message: 'Failed to assign driver', error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getBooking,
   getUserBookings,
-  updateBookingStatus
+  updateBookingStatus,
+  assignDriverToBooking
 };

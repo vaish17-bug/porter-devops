@@ -1,5 +1,6 @@
-import React, { useContext, useEffect, useState, useCallback } from 'react';
+import React, { useContext, useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { AuthContext } from '../utils/AuthContext';
 
 const DriverDashboard = () => {
@@ -9,7 +10,13 @@ const DriverDashboard = () => {
   const [error, setError] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(false);
-  const [locationForm, setLocationForm] = useState({ latitude: '', longitude: '' });
+  const [lastLocationUpdatedAt, setLastLocationUpdatedAt] = useState(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [incomingOffers, setIncomingOffers] = useState([]);
+  const [socketStatus, setSocketStatus] = useState('disconnected');
+  const [respondingOfferId, setRespondingOfferId] = useState('');
+  const [autoSyncStatus, setAutoSyncStatus] = useState('idle');
+  const socketRef = useRef(null);
 
   const fetchDriverProfile = useCallback(async () => {
     if (!user?.phone) {
@@ -19,16 +26,14 @@ const DriverDashboard = () => {
 
     try {
       const response = await axios.get('http://localhost:5003/drivers', {
+        params: { t: Date.now() },
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const matched = response.data?.drivers?.find((d) => d.phone === user.phone);
       setDriver(matched || null);
-      if (matched?.currentLocation) {
-        setLocationForm({
-          latitude: matched.currentLocation.latitude,
-          longitude: matched.currentLocation.longitude
-        });
+      if (matched?.updatedAt) {
+        setLastLocationUpdatedAt(new Date(matched.updatedAt));
       }
       if (!matched) {
         setError('Driver profile not found. Please contact admin or re-register as driver.');
@@ -40,23 +45,108 @@ const DriverDashboard = () => {
     }
   }, [user?.phone, token]);
 
-  const handleLocationChange = (event) => {
-    const { name, value } = event.target;
-    setLocationForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     setLoading(true);
     setError('');
     await fetchDriverProfile();
-  };
+  }, [fetchDriverProfile]);
 
   useEffect(() => {
     fetchDriverProfile();
   }, [fetchDriverProfile]);
+
+  useEffect(() => {
+    if (!driver?.driverId) {
+      return undefined;
+    }
+
+    const socket = io('http://localhost:5003', { transports: ['websocket'] });
+    socketRef.current = socket;
+    setSocketStatus('connecting');
+
+    socket.on('connect', () => {
+      setSocketStatus('connected');
+      socket.emit('driver:register', { driverId: driver.driverId });
+    });
+
+    socket.on('driver:registered', () => {
+      setSocketStatus('ready');
+    });
+
+    socket.on('disconnect', () => {
+      setSocketStatus('disconnected');
+    });
+
+    socket.on('driver:offer', (offer) => {
+      setIncomingOffers((prev) => {
+        if (prev.some((item) => item.offerId === offer.offerId)) {
+          return prev;
+        }
+
+        return [offer, ...prev];
+      });
+    });
+
+    socket.on('driver:offer-expired', ({ offerId }) => {
+      setIncomingOffers((prev) => prev.filter((offer) => offer.offerId !== offerId));
+    });
+
+    socket.on('driver:offer-accepted', ({ offerId }) => {
+      setIncomingOffers((prev) => prev.filter((offer) => offer.offerId !== offerId));
+      refreshProfile();
+    });
+
+    socket.on('driver:offer-rejected', ({ offerId }) => {
+      setIncomingOffers((prev) => prev.filter((offer) => offer.offerId !== offerId));
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [driver?.driverId, refreshProfile]);
+
+  useEffect(() => {
+    if (!driver?.driverId) {
+      return undefined;
+    }
+
+    const syncPendingOffers = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5003/drivers/offers/pending/${driver.driverId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const pending = response.data?.offers || [];
+        if (!Array.isArray(pending) || pending.length === 0) {
+          return;
+        }
+
+        setIncomingOffers((prev) => {
+          const existing = new Set(prev.map((item) => item.offerId));
+          const merged = [...prev];
+
+          pending.forEach((offer) => {
+            if (!existing.has(offer.offerId)) {
+              merged.unshift(offer);
+            }
+          });
+
+          return merged;
+        });
+      } catch (pollError) {
+        // Silent fallback polling: socket remains the primary realtime channel.
+      }
+    };
+
+    syncPendingOffers();
+    const interval = setInterval(syncPendingOffers, 2000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [driver?.driverId, token]);
 
   const toggleAvailability = async () => {
     if (!driver?.driverId) {
@@ -80,31 +170,124 @@ const DriverDashboard = () => {
     }
   };
 
-  const updateLocation = async (event) => {
-    event.preventDefault();
+  const getCurrentLocationWithRetry = (retryCount = 1) => new Promise((resolve, reject) => {
+    const tryGetLocation = (remainingRetries) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (geoError) => {
+          if (remainingRetries > 0) {
+            setTimeout(() => tryGetLocation(remainingRetries - 1), 1500);
+          } else {
+            reject(geoError);
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    };
 
+    tryGetLocation(retryCount);
+  });
+
+  const updateLocation = useCallback(async ({ silent = false, withRetry = true } = {}) => {
     if (!driver?.driverId) {
       return;
     }
 
+    if (!navigator.geolocation) {
+      if (!silent) {
+        setError('Geolocation is not supported in this browser.');
+      }
+      return;
+    }
+
     setUpdatingLocation(true);
-    setError('');
+    if (!silent) {
+      setError('');
+    }
 
     try {
+      const location = await getCurrentLocationWithRetry(withRetry ? 1 : 0);
       const response = await axios.patch(
         `http://localhost:5003/drivers/${driver.driverId}/location`,
-        locationForm,
+        {
+          latitude: location.latitude,
+          longitude: location.longitude
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDriver(response.data.driver);
-      setLocationForm({
-        latitude: response.data.driver.currentLocation.latitude,
-        longitude: response.data.driver.currentLocation.longitude
-      });
+      setLastLocationUpdatedAt(new Date());
+      if (silent) {
+        setAutoSyncStatus('updated');
+      }
     } catch (err) {
-      setError('Could not update location');
+      if (silent) {
+        setAutoSyncStatus('failed');
+      } else {
+        setError('Location permission denied or unavailable. Please enable location access.');
+      }
     } finally {
       setUpdatingLocation(false);
+    }
+  }, [driver?.driverId, token]);
+
+  useEffect(() => {
+    if (!driver?.driverId || !driver.isAvailable || !autoSyncEnabled) {
+      return undefined;
+    }
+
+    setAutoSyncStatus('active');
+    const interval = setInterval(() => {
+      updateLocation({ silent: true, withRetry: true });
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      setAutoSyncStatus('idle');
+    };
+  }, [driver?.driverId, driver?.isAvailable, autoSyncEnabled, updateLocation]);
+
+  const respondToOffer = async (offerId, action) => {
+    if (!driver?.driverId) {
+      return;
+    }
+
+    setRespondingOfferId(offerId);
+    setError('');
+
+    try {
+      const endpoint = action === 'accept'
+        ? `http://localhost:5003/drivers/offers/${offerId}/accept`
+        : `http://localhost:5003/drivers/offers/${offerId}/reject`;
+
+      const response = await axios.post(
+        endpoint,
+        { driverId: driver.driverId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setIncomingOffers((prev) => prev.filter((offer) => offer.offerId !== offerId));
+
+      if (action === 'accept') {
+        setDriver((prev) => ({ ...prev, isAvailable: false }));
+      }
+
+      if (response.data?.driver) {
+        setDriver(response.data.driver);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || `Could not ${action} request`);
+    } finally {
+      setRespondingOfferId('');
     }
   };
 
@@ -119,6 +302,11 @@ const DriverDashboard = () => {
     <div style={styles.container}>
       <h1 style={styles.title}>Driver Dashboard</h1>
       {error && <div style={styles.error}>{error}</div>}
+
+      <div style={styles.statusBar}>
+        <span><strong>Socket:</strong> {socketStatus}</span>
+        <span><strong>Pending Requests:</strong> {incomingOffers.length}</span>
+      </div>
 
       {!driver ? (
         <div style={styles.card}>No driver data available.</div>
@@ -156,16 +344,9 @@ const DriverDashboard = () => {
               <button
                 onClick={toggleAvailability}
                 disabled={updatingStatus}
-                style={{
-                  ...styles.button,
-                  backgroundColor: driver.isAvailable ? '#d84315' : '#2e7d32'
-                }}
+                style={{ ...styles.button, backgroundColor: driver.isAvailable ? '#d84315' : '#2e7d32' }}
               >
-                {updatingStatus
-                  ? 'Updating...'
-                  : driver.isAvailable
-                    ? 'Go Offline'
-                    : 'Go Online'}
+                {updatingStatus ? 'Updating...' : driver.isAvailable ? 'Go Offline' : 'Go Online'}
               </button>
 
               <button onClick={refreshProfile} style={styles.secondaryButton}>
@@ -176,56 +357,66 @@ const DriverDashboard = () => {
 
           <div style={styles.card}>
             <h2 style={styles.heading}>Update Live Location</h2>
-            <form onSubmit={updateLocation} style={styles.form}>
-              <label style={styles.label}>
-                Latitude
+            <div style={styles.form}>
+              <p style={styles.driverHint}>Use your device GPS to sync live location automatically.</p>
+              {lastLocationUpdatedAt && (
+                <p style={styles.metaText}><strong>Last Updated:</strong> {lastLocationUpdatedAt.toLocaleTimeString()}</p>
+              )}
+              <label style={styles.toggleRow}>
                 <input
-                  type="number"
-                  step="any"
-                  name="latitude"
-                  value={locationForm.latitude}
-                  onChange={handleLocationChange}
-                  style={styles.input}
-                  placeholder="28.6139"
+                  type="checkbox"
+                  checked={autoSyncEnabled}
+                  onChange={(e) => setAutoSyncEnabled(e.target.checked)}
                 />
+                <span>Auto sync every 30 seconds while Online</span>
               </label>
-
-              <label style={styles.label}>
-                Longitude
-                <input
-                  type="number"
-                  step="any"
-                  name="longitude"
-                  value={locationForm.longitude}
-                  onChange={handleLocationChange}
-                  style={styles.input}
-                  placeholder="77.2090"
-                />
-              </label>
-
-              <button type="submit" disabled={updatingLocation} style={styles.button}>
-                {updatingLocation ? 'Saving...' : 'Save Location'}
+              <p style={styles.metaText}><strong>Auto Sync:</strong> {autoSyncStatus}</p>
+              <button type="button" onClick={updateLocation} disabled={updatingLocation} style={styles.button}>
+                {updatingLocation ? 'Fetching GPS...' : 'Use Current Location'}
               </button>
-            </form>
+            </div>
           </div>
 
           <div style={styles.card}>
-            <h2 style={styles.heading}>Driver Tools</h2>
-            <div style={styles.toolsGrid}>
-              <div style={styles.toolCard}>
-                <strong>Availability Control</strong>
-                <p>Go online or offline from one click.</p>
+            <h2 style={styles.heading}>Incoming Booking Requests</h2>
+            {incomingOffers.length === 0 ? (
+              <p style={styles.driverHint}>No new booking requests right now.</p>
+            ) : (
+              <div style={styles.offerList}>
+                {incomingOffers.map((offer) => (
+                  <div key={offer.offerId} style={styles.offerCard}>
+                    <div style={styles.offerHeader}>
+                      <strong>{offer.pickup?.name || 'Pickup'} → {offer.drop?.name || 'Drop'}</strong>
+                      <span>{offer.vehicleType?.toUpperCase()}</span>
+                    </div>
+                    <p><strong>Booking ID:</strong> {offer.bookingId}</p>
+                    <p><strong>Service:</strong> {offer.serviceType}</p>
+                    <p><strong>Weight:</strong> {offer.parcelWeightKg} kg</p>
+                    <p><strong>Fare:</strong> ₹{offer.fareBreakdown?.totalFare}</p>
+                    <div style={styles.offerActions}>
+                      <button
+                        onClick={() => respondToOffer(offer.offerId, 'accept')}
+                        disabled={respondingOfferId === offer.offerId}
+                        style={styles.acceptButton}
+                      >
+                        {respondingOfferId === offer.offerId ? 'Processing...' : 'Accept'}
+                      </button>
+                      <button
+                        onClick={() => respondToOffer(offer.offerId, 'reject')}
+                        disabled={respondingOfferId === offer.offerId}
+                        style={styles.rejectButton}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={styles.toolCard}>
-                <strong>Location Sync</strong>
-                <p>Update current latitude and longitude when you move.</p>
-              </div>
-              <div style={styles.toolCard}>
-                <strong>Profile Snapshot</strong>
-                <p>See rating, deliveries, and driver ID at a glance.</p>
-              </div>
-            </div>
+            )}
           </div>
+
+          
+          
         </>
       )}
     </div>
@@ -233,117 +424,45 @@ const DriverDashboard = () => {
 };
 
 const styles = {
-  container: {
-    maxWidth: '900px',
-    margin: '0 auto',
-    padding: '20px'
-  },
-  title: {
-    color: '#FF6B35',
-    marginBottom: '18px'
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    padding: '18px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-    marginBottom: '16px'
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: '12px',
-    marginBottom: '16px'
-  },
-  statCard: {
-    backgroundColor: '#fff8f4',
-    border: '1px solid #ffd8c5',
-    borderRadius: '8px',
-    padding: '14px'
-  },
-  statLabel: {
-    display: 'block',
-    fontSize: '13px',
-    color: '#6b7280',
-    marginBottom: '6px'
-  },
-  statValue: {
-    fontSize: '18px',
-    fontWeight: 700,
-    color: '#222'
-  },
-  profileGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '8px 18px'
-  },
-  actionRow: {
+  container: { maxWidth: '900px', margin: '0 auto', padding: '20px' },
+  title: { color: '#FF6B35', marginBottom: '18px' },
+  statusBar: {
     display: 'flex',
+    justifyContent: 'space-between',
     gap: '12px',
     flexWrap: 'wrap',
-    marginTop: '14px'
+    padding: '12px 16px',
+    backgroundColor: '#fff8f4',
+    border: '1px solid #ffd8c5',
+    borderRadius: '10px',
+    marginBottom: '16px',
+    color: '#7c2d12'
   },
-  heading: {
-    marginTop: 0,
-    color: '#222'
-  },
-  button: {
-    marginTop: '12px',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '10px 14px',
-    cursor: 'pointer'
-  },
-  secondaryButton: {
-    marginTop: '12px',
-    backgroundColor: '#111827',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '10px 14px',
-    cursor: 'pointer'
-  },
-  form: {
-    display: 'grid',
-    gap: '12px',
-    maxWidth: '420px'
-  },
-  label: {
-    display: 'grid',
-    gap: '6px',
-    fontWeight: 600,
-    color: '#374151'
-  },
-  input: {
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    padding: '10px 12px',
-    fontSize: '14px'
-  },
-  toolsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '12px'
-  },
-  toolCard: {
-    border: '1px solid #f1f5f9',
-    borderRadius: '8px',
-    padding: '14px',
-    backgroundColor: '#fafafa'
-  },
-  error: {
-    backgroundColor: '#ffe6e6',
-    color: '#b71c1c',
-    padding: '10px',
-    borderRadius: '4px',
-    marginBottom: '14px'
-  },
-  list: {
-    margin: 0,
-    paddingLeft: '18px',
-    lineHeight: 1.6
-  }
+  card: { backgroundColor: 'white', borderRadius: '8px', padding: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', marginBottom: '16px' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' },
+  statCard: { backgroundColor: '#fff8f4', border: '1px solid #ffd8c5', borderRadius: '8px', padding: '14px' },
+  statLabel: { display: 'block', fontSize: '13px', color: '#6b7280', marginBottom: '6px' },
+  statValue: { fontSize: '18px', fontWeight: 700, color: '#222' },
+  profileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px 18px' },
+  actionRow: { display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px' },
+  heading: { marginTop: 0, color: '#222' },
+  button: { marginTop: '12px', color: 'light blue', border: 'none', borderRadius: '4px', padding: '10px 14px', cursor: 'pointer' },
+  secondaryButton: { marginTop: '12px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '4px', padding: '10px 14px', cursor: 'pointer' },
+  form: { display: 'grid', gap: '12px', maxWidth: '420px' },
+  toggleRow: { display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 600 },
+  metaText: { margin: 0, color: '#4b5563', fontSize: '13px' },
+  label: { display: 'grid', gap: '6px', fontWeight: 600, color: '#374151' },
+  input: { border: '1px solid #d1d5db', borderRadius: '6px', padding: '10px 12px', fontSize: '14px' },
+  toolsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' },
+  toolCard: { border: '1px solid #f1f5f9', borderRadius: '8px', padding: '14px', backgroundColor: '#fafafa' },
+  offerList: { display: 'grid', gap: '12px' },
+  offerCard: { border: '1px solid #fde2d2', borderRadius: '10px', padding: '14px', backgroundColor: '#fffdfb' },
+  offerHeader: { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '8px' },
+  offerActions: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' },
+  acceptButton: { backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 14px', cursor: 'pointer' },
+  rejectButton: { backgroundColor: '#b91c1c', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 14px', cursor: 'pointer' },
+  error: { backgroundColor: '#ffe6e6', color: '#b71c1c', padding: '10px', borderRadius: '4px', marginBottom: '14px' },
+  driverHint: { margin: 0, color: '#666' }
 };
 
 export default DriverDashboard;

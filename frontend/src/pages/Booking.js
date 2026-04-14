@@ -136,7 +136,13 @@ const Booking = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccess(`Booking created successfully! Booking ID: ${response.data?.booking?.bookingId || 'generated'}`);
+      const bookingStatus = response.data?.booking?.status;
+      const bookingId = response.data?.booking?.bookingId || 'generated';
+      setSuccess(
+        bookingStatus === 'pending_driver'
+          ? `Booking created successfully! Booking ID: ${bookingId}. Nearby drivers are being notified now.`
+          : `Booking created successfully! Booking ID: ${bookingId}`
+      );
       setPickup(null);
       setDrop(null);
       setReceiver({ name: '', phone: '' });
