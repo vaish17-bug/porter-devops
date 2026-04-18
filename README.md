@@ -1,12 +1,10 @@
-<<<<<<< HEAD
-# porter-devops
-Microservices-based delivery platform with Docker, GitHub Actions CI/CD pipeline — DevOps Mini Project (Sem II 2025-26)
-=======
-# 🚚 Mini Porter - Delivery System
+DevOps Mini Project (Sem II 2025-26)
 
-A microservices-based delivery platform inspired by Porter with DevOps best practices.
+ShipEase-Microservices-based delivery platform with Docker, GitHub Actions CI/CD pipeline — DevOps Mini Project (Sem II 2025-26)
 
-## 📋 Project Structure
+
+
+Project Structure
 
 ```
 Porter/
@@ -24,15 +22,14 @@ Porter/
 └── tests/                   # Test suites
 ```
 
-## 🚀 Quick Start
 
-### Prerequisites
+ Prerequisites
 - Node.js 20.x
 - Docker & Docker Compose
 - MongoDB (local or Atlas)
 - Git
 
-### Setup & Run
+ Setup & Run
 
 1. **Clone & Navigate**
    ```bash
@@ -67,7 +64,7 @@ Porter/
    npm run seed
    ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### Microservices
 
@@ -88,7 +85,7 @@ Porter/
 - Automatic driver assignment on booking
 - Event-driven status updates
 
-## 📝 API Endpoints
+##  API Endpoints
 
 ### User Service
 - `POST /auth/register` - Register new user
@@ -114,7 +111,7 @@ Porter/
 - `GET /notifications/:bookingId` - Get booking notifications
 - `GET /notifications/user/:userId` - Get user notifications
 
-## 🧪 Testing
+##  Testing
 
 ### Manual Testing
 1. Use Postman collection: `tests/postman/Porter.postman_collection.json`
@@ -125,7 +122,7 @@ Porter/
 npm test
 ```
 
-## 🐳 Docker Compose
+##  Docker Compose
 
 All services start automatically with dependencies in correct order:
 
@@ -135,7 +132,7 @@ docker-compose logs -f        # View logs
 docker-compose down           # Stop all services
 ```
 
-## 🔄 CI/CD Pipeline
+##  CI/CD Pipeline
 
 **Triggered on:** Push to `main` or `develop`, Pull requests
 
@@ -149,20 +146,20 @@ docker-compose down           # Stop all services
 
 View workflow: `.github/workflows/ci.yml`
 
-## 📊 Features
+##  Features
 
-✅ User authentication with JWT  
-✅ Booking with location coordinates  
-✅ Nearest-driver assignment  
-✅ Automatic status simulation  
-✅ Real-time tracking updates  
-✅ Console + Email notifications  
-✅ Docker containerization  
-✅ GitHub Actions CI pipeline  
-✅ Health checks on all services  
-✅ Microservices architecture  
+-User authentication with JWT  
+- Booking with location coordinates  
+- Nearest-driver assignment  
+- Automatic status simulation  
+- Real-time tracking updates  
+- Console + Email notifications  
+- Docker containerization  
+- GitHub Actions CI pipeline  
+- Health checks on all services  
+- Microservices architecture  
 
-## 🎯 Demo Scenario
+## Demo Scenario
 
 1. User registers & logs in
 2. Creates booking with pickup/drop locations
@@ -172,14 +169,14 @@ View workflow: `.github/workflows/ci.yml`
 5. Notifications sent at each status change
 6. Frontend shows live tracking timeline
 
-## 📚 Documentation
+## Documentation
 
 - [Architecture Diagram](docs/ARCHITECTURE.md)
 - [API Contracts](docs/API_CONTRACTS.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-## 🛠️ Development
+##  Development
 
 ### Running Services Locally
 ```bash
@@ -202,7 +199,7 @@ cd services/notification-service && npm install && npm run dev
 cd frontend && npm install && npm start
 ```
 
-## 📈 Known Limitations & Future Enhancements
+##  Known Limitations & Future Enhancements
 
 | Item | Status |
 |------|--------|
