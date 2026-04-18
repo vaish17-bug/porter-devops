@@ -8,29 +8,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    # Install dependencies (safe version)
-    - name: Install dependencies
-      run: |
-        cd services/user-service && npm install
-        cd ../booking-service && npm install
-        cd ../driver-service && npm install
-        cd ../tracking-service && npm install
-        cd ../notification-service && npm install
-        cd ../../frontend && npm install
+      - name: Install Dependencies
+        run: |
+          cd services/user-service
+          npm install
 
-    # Build frontend
-    - name: Build Frontend
-      run: |
-        cd frontend
-        npm run build
+          cd ../booking-service
+          npm install
 
-    # Simple success message
-    - name: Done
-      run: echo "CI completed successfully"
+          cd ../driver-service
+          npm install
+
+          cd ../tracking-service
+          npm install
+
+          cd ../notification-service
+          npm install
+
+          cd ../../frontend
+          npm install
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Finish
+        run: echo "Pipeline completed"
