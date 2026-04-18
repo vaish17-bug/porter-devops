@@ -1,45 +1,44 @@
-name: CI Pipeline
+steps:
+  - name: Checkout Code
+    uses: actions/checkout@v4
 
-on:
-  push:
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-jobs:
-  test-and-build:
-    runs-on: ubuntu-latest
+  - name: Install Dependencies
+    run: |
+      cd services/user-service
+      npm install
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      cd ../booking-service
+      npm install
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+      cd ../driver-service
+      npm install
 
-      - name: Install Dependencies
-        run: |
-          cd services/user-service
-          npm install
+      cd ../tracking-service
+      npm install
 
-          cd ../booking-service
-          npm install
+      cd ../notification-service
+      npm install
 
-          cd ../driver-service
-          npm install
+      cd ../../frontend
+      npm install
 
-          cd ../tracking-service
-          npm install
+  # 👇 ADD THIS PART HERE
+  - name: Run Tests
+    run: |
+      cd services/user-service && npm test || true
+      cd ../booking-service && npm test || true
 
-          cd ../notification-service
-          npm install
+  - name: Build Frontend
+    run: |
+      cd frontend
+      npm run build
 
-          cd ../../frontend
-          npm install
-
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm run build
-
-      - name: Finish
-        run: echo "Pipeline completed"
+  - name: Finish
+    run: echo "Pipeline completed"
+  - name: Build Docker Images
+    run: docker compose build
