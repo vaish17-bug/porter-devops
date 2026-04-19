@@ -107,3 +107,19 @@ jobs:
       with:
         name: newman-report
         path: newman-report.json
+
+  deploy:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Trigger Render deployments
+      run: |
+        curl -X POST "${{ secrets.RENDER_USER_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_BOOKING_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_DRIVER_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_TRACKING_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_NOTIFICATION_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_FRONTEND_HOOK }}"
+        echo "All Render deploy hooks triggered"
