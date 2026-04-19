@@ -28,7 +28,7 @@ jobs:
           services/tracking-service/node_modules
           services/notification-service/node_modules
           frontend/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('services/user-service/package.json', 'services/booking-service/package.json', 'services/driver-service/package.json', 'services/tracking-service/package.json', 'services/notification-service/package.json', 'frontend/package.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
@@ -84,19 +84,20 @@ jobs:
       run: npm install -g newman
 
     - name: Start Integration Stack
-      run: docker compose up -d --build mongodb user-service booking-service driver-service tracking-service notification-service
+      run: docker compose up -d --build
+      timeout-minutes: 10
 
     - name: Wait For Services
       run: |
         for port in 5001 5002 5003 5004 5005; do
           ready=false
-          for attempt in $(seq 1 15); do
+          for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:${port}/health > /dev/null; then
               echo "Service on ${port} is ready"
               ready=true
               break
             fi
-            sleep 2
+            sleep 3
           done
           if [ "$ready" = false ]; then
             echo "Service on port ${port} never became ready"
@@ -107,9 +108,10 @@ jobs:
 
     - name: Seed Drivers For Integration
       run: docker compose exec -T driver-service npm run seed
+      timeout-minutes: 2
 
     - name: Run API Contract Tests
-      run: newman run tests/postman/Porter.postman_collection.json --reporters cli,json --reporter-json-export newman-report.json
+      run: newman run ./tests/postman/Porter.postman_collection.json --reporters cli,json --reporter-json-export newman-report.json
 
     - name: Smoke Check Summary
       run: |
@@ -131,10 +133,14 @@ jobs:
         name: newman-report
         path: newman-report.json
 
+    - name: Cleanup Docker
+      if: always()
+      run: docker compose down -v
+
   deploy:
     needs: test-and-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.test-and-build.result == 'success'
 
     steps:
     - name: Trigger Render deployments
