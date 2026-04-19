@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 import { Link } from 'react-router-dom';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import API from '../utils/api';
 
 const serviceRules = {
   bike: {

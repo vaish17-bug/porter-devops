@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState, useCallback, useRef } from 'rea
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { AuthContext } from '../utils/AuthContext';
+import API from '../utils/api';
 
 const DriverDashboard = () => {
   const { user, token } = useContext(AuthContext);
@@ -25,7 +26,7 @@ const DriverDashboard = () => {
     }
 
     try {
-      const response = await axios.get('http://localhost:5003/drivers', {
+      const response = await axios.get(`${API.DRIVER_SERVICE}/drivers`, {
         params: { t: Date.now() },
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -60,7 +61,7 @@ const DriverDashboard = () => {
       return undefined;
     }
 
-    const socket = io('http://localhost:5003', { transports: ['websocket'] });
+    const socket = io(API.DRIVER_SERVICE, { transports: ['websocket'] });
     socketRef.current = socket;
     setSocketStatus('connecting');
 
@@ -82,7 +83,6 @@ const DriverDashboard = () => {
         if (prev.some((item) => item.offerId === offer.offerId)) {
           return prev;
         }
-
         return [offer, ...prev];
       });
     });
@@ -114,7 +114,7 @@ const DriverDashboard = () => {
     const syncPendingOffers = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5003/drivers/offers/pending/${driver.driverId}`,
+          `${API.DRIVER_SERVICE}/drivers/offers/pending/${driver.driverId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -126,17 +126,15 @@ const DriverDashboard = () => {
         setIncomingOffers((prev) => {
           const existing = new Set(prev.map((item) => item.offerId));
           const merged = [...prev];
-
           pending.forEach((offer) => {
             if (!existing.has(offer.offerId)) {
               merged.unshift(offer);
             }
           });
-
           return merged;
         });
       } catch (pollError) {
-        // Silent fallback polling: socket remains the primary realtime channel.
+        // Silent fallback polling
       }
     };
 
@@ -149,16 +147,12 @@ const DriverDashboard = () => {
   }, [driver?.driverId, token]);
 
   const toggleAvailability = async () => {
-    if (!driver?.driverId) {
-      return;
-    }
-
+    if (!driver?.driverId) return;
     setUpdatingStatus(true);
     setError('');
-
     try {
       const response = await axios.patch(
-        `http://localhost:5003/drivers/${driver.driverId}/availability`,
+        `${API.DRIVER_SERVICE}/drivers/${driver.driverId}/availability`,
         { isAvailable: !driver.isAvailable },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -174,10 +168,7 @@ const DriverDashboard = () => {
     const tryGetLocation = (remainingRetries) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
+          resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
         },
         (geoError) => {
           if (remainingRetries > 0) {
@@ -186,49 +177,30 @@ const DriverDashboard = () => {
             reject(geoError);
           }
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     };
-
     tryGetLocation(retryCount);
   });
 
   const updateLocation = useCallback(async ({ silent = false, withRetry = true } = {}) => {
-    if (!driver?.driverId) {
-      return;
-    }
-
+    if (!driver?.driverId) return;
     if (!navigator.geolocation) {
-      if (!silent) {
-        setError('Geolocation is not supported in this browser.');
-      }
+      if (!silent) setError('Geolocation is not supported in this browser.');
       return;
     }
-
     setUpdatingLocation(true);
-    if (!silent) {
-      setError('');
-    }
-
+    if (!silent) setError('');
     try {
       const location = await getCurrentLocationWithRetry(withRetry ? 1 : 0);
       const response = await axios.patch(
-        `http://localhost:5003/drivers/${driver.driverId}/location`,
-        {
-          latitude: location.latitude,
-          longitude: location.longitude
-        },
+        `${API.DRIVER_SERVICE}/drivers/${driver.driverId}/location`,
+        { latitude: location.latitude, longitude: location.longitude },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDriver(response.data.driver);
       setLastLocationUpdatedAt(new Date());
-      if (silent) {
-        setAutoSyncStatus('updated');
-      }
+      if (silent) setAutoSyncStatus('updated');
     } catch (err) {
       if (silent) {
         setAutoSyncStatus('failed');
@@ -241,15 +213,11 @@ const DriverDashboard = () => {
   }, [driver?.driverId, token]);
 
   useEffect(() => {
-    if (!driver?.driverId || !driver.isAvailable || !autoSyncEnabled) {
-      return undefined;
-    }
-
+    if (!driver?.driverId || !driver.isAvailable || !autoSyncEnabled) return undefined;
     setAutoSyncStatus('active');
     const interval = setInterval(() => {
       updateLocation({ silent: true, withRetry: true });
     }, 30000);
-
     return () => {
       clearInterval(interval);
       setAutoSyncStatus('idle');
@@ -257,33 +225,22 @@ const DriverDashboard = () => {
   }, [driver?.driverId, driver?.isAvailable, autoSyncEnabled, updateLocation]);
 
   const respondToOffer = async (offerId, action) => {
-    if (!driver?.driverId) {
-      return;
-    }
-
+    if (!driver?.driverId) return;
     setRespondingOfferId(offerId);
     setError('');
-
     try {
       const endpoint = action === 'accept'
-        ? `http://localhost:5003/drivers/offers/${offerId}/accept`
-        : `http://localhost:5003/drivers/offers/${offerId}/reject`;
+        ? `${API.DRIVER_SERVICE}/drivers/offers/${offerId}/accept`
+        : `${API.DRIVER_SERVICE}/drivers/offers/${offerId}/reject`;
 
       const response = await axios.post(
         endpoint,
         { driverId: driver.driverId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       setIncomingOffers((prev) => prev.filter((offer) => offer.offerId !== offerId));
-
-      if (action === 'accept') {
-        setDriver((prev) => ({ ...prev, isAvailable: false }));
-      }
-
-      if (response.data?.driver) {
-        setDriver(response.data.driver);
-      }
+      if (action === 'accept') setDriver((prev) => ({ ...prev, isAvailable: false }));
+      if (response.data?.driver) setDriver(response.data.driver);
     } catch (err) {
       setError(err.response?.data?.message || `Could not ${action} request`);
     } finally {
@@ -291,9 +248,7 @@ const DriverDashboard = () => {
     }
   };
 
-  if (loading) {
-    return <div style={styles.container}>Loading driver dashboard...</div>;
-  }
+  if (loading) return <div style={styles.container}>Loading driver dashboard...</div>;
 
   const currentLatitude = driver?.currentLocation?.latitude ?? 'N/A';
   const currentLongitude = driver?.currentLocation?.longitude ?? 'N/A';
@@ -302,12 +257,10 @@ const DriverDashboard = () => {
     <div style={styles.container}>
       <h1 style={styles.title}>Driver Dashboard</h1>
       {error && <div style={styles.error}>{error}</div>}
-
       <div style={styles.statusBar}>
         <span><strong>Socket:</strong> {socketStatus}</span>
         <span><strong>Pending Requests:</strong> {incomingOffers.length}</span>
       </div>
-
       {!driver ? (
         <div style={styles.card}>No driver data available.</div>
       ) : (
@@ -315,59 +268,31 @@ const DriverDashboard = () => {
           <div style={styles.card}>
             <h2 style={styles.heading}>Quick Overview</h2>
             <div style={styles.statsGrid}>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>Current Status</span>
-                <span style={styles.statValue}>{driver.isAvailable ? 'Online' : 'On Delivery'}</span>
-              </div>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>Rating</span>
-                <span style={styles.statValue}>{driver.rating?.toFixed(1)}</span>
-              </div>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>Deliveries</span>
-                <span style={styles.statValue}>{driver.totalDeliveries || 0}</span>
-              </div>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>Vehicle</span>
-                <span style={styles.statValue}>{driver.vehicleType?.toUpperCase()}</span>
-              </div>
+              <div style={styles.statCard}><span style={styles.statLabel}>Current Status</span><span style={styles.statValue}>{driver.isAvailable ? 'Online' : 'On Delivery'}</span></div>
+              <div style={styles.statCard}><span style={styles.statLabel}>Rating</span><span style={styles.statValue}>{driver.rating?.toFixed(1)}</span></div>
+              <div style={styles.statCard}><span style={styles.statLabel}>Deliveries</span><span style={styles.statValue}>{driver.totalDeliveries || 0}</span></div>
+              <div style={styles.statCard}><span style={styles.statLabel}>Vehicle</span><span style={styles.statValue}>{driver.vehicleType?.toUpperCase()}</span></div>
             </div>
-
             <div style={styles.profileGrid}>
               <p><strong>Name:</strong> {driver.name}</p>
               <p><strong>Phone:</strong> {driver.phone}</p>
               <p><strong>Driver ID:</strong> {driver.driverId}</p>
               <p><strong>Current Location:</strong> {currentLatitude}, {currentLongitude}</p>
             </div>
-
             <div style={styles.actionRow}>
-              <button
-                onClick={toggleAvailability}
-                disabled={updatingStatus}
-                style={{ ...styles.button, backgroundColor: driver.isAvailable ? '#d84315' : '#2e7d32' }}
-              >
+              <button onClick={toggleAvailability} disabled={updatingStatus} style={{ ...styles.button, backgroundColor: driver.isAvailable ? '#d84315' : '#2e7d32' }}>
                 {updatingStatus ? 'Updating...' : driver.isAvailable ? 'Go Offline' : 'Go Online'}
               </button>
-
-              <button onClick={refreshProfile} style={styles.secondaryButton}>
-                Refresh Profile
-              </button>
+              <button onClick={refreshProfile} style={styles.secondaryButton}>Refresh Profile</button>
             </div>
           </div>
-
           <div style={styles.card}>
             <h2 style={styles.heading}>Update Live Location</h2>
             <div style={styles.form}>
               <p style={styles.driverHint}>Use your device GPS to sync live location automatically.</p>
-              {lastLocationUpdatedAt && (
-                <p style={styles.metaText}><strong>Last Updated:</strong> {lastLocationUpdatedAt.toLocaleTimeString()}</p>
-              )}
+              {lastLocationUpdatedAt && (<p style={styles.metaText}><strong>Last Updated:</strong> {lastLocationUpdatedAt.toLocaleTimeString()}</p>)}
               <label style={styles.toggleRow}>
-                <input
-                  type="checkbox"
-                  checked={autoSyncEnabled}
-                  onChange={(e) => setAutoSyncEnabled(e.target.checked)}
-                />
+                <input type="checkbox" checked={autoSyncEnabled} onChange={(e) => setAutoSyncEnabled(e.target.checked)} />
                 <span>Auto sync every 30 seconds while Online</span>
               </label>
               <p style={styles.metaText}><strong>Auto Sync:</strong> {autoSyncStatus}</p>
@@ -376,7 +301,6 @@ const DriverDashboard = () => {
               </button>
             </div>
           </div>
-
           <div style={styles.card}>
             <h2 style={styles.heading}>Incoming Booking Requests</h2>
             {incomingOffers.length === 0 ? (
@@ -394,29 +318,16 @@ const DriverDashboard = () => {
                     <p><strong>Weight:</strong> {offer.parcelWeightKg} kg</p>
                     <p><strong>Fare:</strong> ₹{offer.fareBreakdown?.totalFare}</p>
                     <div style={styles.offerActions}>
-                      <button
-                        onClick={() => respondToOffer(offer.offerId, 'accept')}
-                        disabled={respondingOfferId === offer.offerId}
-                        style={styles.acceptButton}
-                      >
+                      <button onClick={() => respondToOffer(offer.offerId, 'accept')} disabled={respondingOfferId === offer.offerId} style={styles.acceptButton}>
                         {respondingOfferId === offer.offerId ? 'Processing...' : 'Accept'}
                       </button>
-                      <button
-                        onClick={() => respondToOffer(offer.offerId, 'reject')}
-                        disabled={respondingOfferId === offer.offerId}
-                        style={styles.rejectButton}
-                      >
-                        Reject
-                      </button>
+                      <button onClick={() => respondToOffer(offer.offerId, 'reject')} disabled={respondingOfferId === offer.offerId} style={styles.rejectButton}>Reject</button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          
-          
         </>
       )}
     </div>
@@ -426,18 +337,7 @@ const DriverDashboard = () => {
 const styles = {
   container: { maxWidth: '900px', margin: '0 auto', padding: '20px' },
   title: { color: '#FF6B35', marginBottom: '18px' },
-  statusBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '12px',
-    flexWrap: 'wrap',
-    padding: '12px 16px',
-    backgroundColor: '#fff8f4',
-    border: '1px solid #ffd8c5',
-    borderRadius: '10px',
-    marginBottom: '16px',
-    color: '#7c2d12'
-  },
+  statusBar: { display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px', backgroundColor: '#fff8f4', border: '1px solid #ffd8c5', borderRadius: '10px', marginBottom: '16px', color: '#7c2d12' },
   card: { backgroundColor: 'white', borderRadius: '8px', padding: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', marginBottom: '16px' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' },
   statCard: { backgroundColor: '#fff8f4', border: '1px solid #ffd8c5', borderRadius: '8px', padding: '14px' },
@@ -446,15 +346,11 @@ const styles = {
   profileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px 18px' },
   actionRow: { display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px' },
   heading: { marginTop: 0, color: '#222' },
-  button: { marginTop: '12px', color: 'light blue', border: 'none', borderRadius: '4px', padding: '10px 14px', cursor: 'pointer' },
+  button: { marginTop: '12px', color: 'white', border: 'none', borderRadius: '4px', padding: '10px 14px', cursor: 'pointer', backgroundColor: '#FF6B35' },
   secondaryButton: { marginTop: '12px', backgroundColor: '#111827', color: 'white', border: 'none', borderRadius: '4px', padding: '10px 14px', cursor: 'pointer' },
   form: { display: 'grid', gap: '12px', maxWidth: '420px' },
   toggleRow: { display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontWeight: 600 },
   metaText: { margin: 0, color: '#4b5563', fontSize: '13px' },
-  label: { display: 'grid', gap: '6px', fontWeight: 600, color: '#374151' },
-  input: { border: '1px solid #d1d5db', borderRadius: '6px', padding: '10px 12px', fontSize: '14px' },
-  toolsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' },
-  toolCard: { border: '1px solid #f1f5f9', borderRadius: '8px', padding: '14px', backgroundColor: '#fafafa' },
   offerList: { display: 'grid', gap: '12px' },
   offerCard: { border: '1px solid #fde2d2', borderRadius: '10px', padding: '14px', backgroundColor: '#fffdfb' },
   offerHeader: { display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '8px' },

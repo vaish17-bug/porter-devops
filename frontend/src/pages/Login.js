@@ -18,7 +18,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:5001/auth/login',
+        `${API.USER_SERVICE}/auth/login`,
         { email, password }
       );
 
