@@ -163,7 +163,6 @@ const Register = () => {
     anchor: { color: '#FF6B35', textDecoration: 'none' }
   };
 
-  export default Register;
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [vehicleType, setVehicleType] = useState('two_wheeler');
@@ -316,5 +315,5 @@ const styles = {
   link: { textAlign: 'center', marginTop: '15px' },
   anchor: { color: '#FF6B35', textDecoration: 'none' }
 };
-
+  
 export default Register;
