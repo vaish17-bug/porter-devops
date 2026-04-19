@@ -100,12 +100,19 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ Driver Service MongoDB connected'))
+.then(async () => {
+  console.log('✅ Driver Service MongoDB connected');
+  
+  if (process.env.SEED_ON_START === 'true') {
+    try {
+      await require('../scripts/seedDrivers').seedDrivers();
+      console.log('✅ Seed drivers completed');
+    } catch (error) {
+      console.error('❌ Seed drivers error:', error.message);
+    }
+  }
+})
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
-
-if (process.env.SEED_ON_START === 'true') {
-  require('../scripts/seedDrivers').seedDrivers();
-}
 
 app.use('/drivers', driverRoutes);
 

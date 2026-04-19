@@ -24,11 +24,15 @@ const seedDrivers = async () => {
 
     await Driver.insertMany(drivers);
     console.log('✅ Drivers seeded successfully!');
-    process.exit(0);
+    return;
   } catch (error) {
     console.error('❌ Seed error:', error);
     process.exit(1);
   }
 };
 
-seedDrivers();
+module.exports = { seedDrivers };
+
+if (require.main === module) {
+  seedDrivers();
+}
