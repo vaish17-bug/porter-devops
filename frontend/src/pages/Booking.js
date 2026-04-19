@@ -124,8 +124,9 @@ const Booking = () => {
     }
 
     try {
-      const response = await axios.post(
-        'http://localhost:5002/bookings',
+      // ✅ Fixed
+const response = await axios.post(
+  `${API.BOOKING_SERVICE}/bookings`,
         {
           userId: user?.id,
           pickup,

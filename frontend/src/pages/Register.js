@@ -42,7 +42,6 @@ const Register = () => {
       setLoading(false);
       return;
     }
-
     if (!isValidPhone(phone)) {
       setError('Phone number must be exactly 10 digits');
       setLoading(false);
@@ -70,9 +69,7 @@ const Register = () => {
       <div style={styles.card}>
         <h1 style={styles.title}>🚚 ShipEase</h1>
         <h2 style={styles.subtitle}>Register</h2>
-
         {error && <div style={styles.error}>{error}</div>}
-
         <form onSubmit={handleRegister}>
           <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} required />
           <input type="email" placeholder="Email" value={email} onChange={(e) => handleEmailChange(e.target.value)} style={styles.input} required />
@@ -87,7 +84,6 @@ const Register = () => {
               {phoneError || 'Valid 10-digit phone number'}
             </p>
           )}
-
           <div style={styles.roleWrap}>
             <label style={styles.roleLabel}>Register As</label>
             <div style={styles.roleOptions}>
@@ -101,7 +97,6 @@ const Register = () => {
               </label>
             </div>
           </div>
-
           {role === 'driver' && (
             <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value)} style={styles.input}>
               <option value="two_wheeler">2 Wheeler</option>
@@ -109,13 +104,11 @@ const Register = () => {
               <option value="truck">Truck</option>
             </select>
           )}
-
           <input type="password" placeholder="Password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} minLength={6} required />
           <button type="submit" style={styles.button} disabled={loading}>
             {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
-
         <p style={styles.link}>
           Already have an account? <Link to="/login" style={styles.anchor}>Login here</Link>
         </p>
