@@ -103,6 +103,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log('✅ Driver Service MongoDB connected'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
+if (process.env.SEED_ON_START === 'true') {
+  require('../scripts/seedDrivers').seedDrivers();
+}
+
 app.use('/drivers', driverRoutes);
 
 app.get('/health', (req, res) => {
