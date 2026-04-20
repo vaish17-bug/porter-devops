@@ -1,8 +1,6 @@
 name: CI Pipeline
 
 on:
-  pull_request:
-    branches: [ main, develop ]
   push:
     branches: [ main, develop ]
 
@@ -152,3 +150,4 @@ jobs:
         curl -X POST "${{ secrets.RENDER_NOTIFICATION_HOOK }}"
         curl -X POST "${{ secrets.RENDER_FRONTEND_HOOK }}"
         echo "All Render deploy hooks triggered"
+
