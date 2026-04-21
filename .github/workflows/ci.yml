@@ -3,8 +3,6 @@ name: CI Pipeline
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
 
 jobs:
   test-and-build:
@@ -17,6 +15,20 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+
+    - name: Cache node_modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          services/user-service/node_modules
+          services/booking-service/node_modules
+          services/driver-service/node_modules
+          services/tracking-service/node_modules
+          services/notification-service/node_modules
+          frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('services/user-service/package.json', 'services/booking-service/package.json', 'services/driver-service/package.json', 'services/tracking-service/package.json', 'services/notification-service/package.json', 'frontend/package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
 
     - name: Install dependencies - User Service
       run: npm install
@@ -66,35 +78,46 @@ jobs:
       run: CI=true npm run build
       working-directory: ./frontend
 
+    - name: Install Newman
+      run: npm install -g newman
+
     - name: Start Integration Stack
-      run: docker compose up -d --build mongodb user-service booking-service driver-service tracking-service notification-service
+      run: docker compose up -d --build
+      timeout-minutes: 10
 
     - name: Wait For Services
       run: |
         for port in 5001 5002 5003 5004 5005; do
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          ready=false
+          for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:${port}/health > /dev/null; then
               echo "Service on ${port} is ready"
+              ready=true
               break
             fi
             sleep 3
           done
+          if [ "$ready" = false ]; then
+            echo "Service on port ${port} never became ready"
+            docker compose logs
+            exit 1
+          fi
         done
 
     - name: Seed Drivers For Integration
       run: docker compose exec -T driver-service npm run seed
-
-    - name: Install Newman
-      run: npm install -g newman
+      timeout-minutes: 2
 
     - name: Run API Contract Tests
-      run: newman run tests/postman/Porter.postman_collection.json --reporters cli,json --reporter-json-export newman-report.json
+      run: newman run ./tests/postman/Porter.postman_collection.json --reporters cli,json --reporter-json-export newman-report.json
 
     - name: Smoke Check Summary
-      run: echo "Backend health smoke tests, frontend build, and Newman contract tests completed successfully" > test-report.txt
-
-    - name: Build Docker Images
-      run: docker compose build
+      run: |
+        for port in 5001 5002 5003 5004 5005; do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${port}/health)
+          echo "Port $port: HTTP $STATUS"
+        done
+        echo "All checks done" > test-report.txt
 
     - name: Upload Test Report
       uses: actions/upload-artifact@v4
@@ -107,3 +130,24 @@ jobs:
       with:
         name: newman-report
         path: newman-report.json
+
+    - name: Cleanup Docker
+      if: always()
+      run: docker compose down -v
+
+  deploy:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && needs.test-and-build.result == 'success'
+
+    steps:
+    - name: Trigger Render deployments
+      run: |
+        curl -X POST "${{ secrets.RENDER_USER_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_BOOKING_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_DRIVER_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_TRACKING_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_NOTIFICATION_HOOK }}"
+        curl -X POST "${{ secrets.RENDER_FRONTEND_HOOK }}"
+        echo "All Render deploy hooks triggered"
+

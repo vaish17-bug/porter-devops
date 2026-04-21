@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import API from '../utils/api';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -20,20 +21,14 @@ const Register = () => {
 
   const handleEmailChange = (value) => {
     setEmail(value);
-    if (!value) {
-      setEmailError('');
-      return;
-    }
+    if (!value) { setEmailError(''); return; }
     setEmailError(isValidEmail(value) ? '' : 'Please enter a valid email address');
   };
 
   const handlePhoneChange = (value) => {
     const cleaned = value.replace(/\D/g, '').slice(0, 10);
     setPhone(cleaned);
-    if (!cleaned) {
-      setPhoneError('');
-      return;
-    }
+    if (!cleaned) { setPhoneError(''); return; }
     setPhoneError(isValidPhone(cleaned) ? '' : 'Phone number must be exactly 10 digits');
   };
 
@@ -47,7 +42,6 @@ const Register = () => {
       setLoading(false);
       return;
     }
-
     if (!isValidPhone(phone)) {
       setError('Phone number must be exactly 10 digits');
       setLoading(false);
@@ -56,10 +50,9 @@ const Register = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:5001/auth/register',
+        `${API.USER_SERVICE}/auth/register`,
         { name, email, phone, password, role, vehicleType }
       );
-
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -76,9 +69,7 @@ const Register = () => {
       <div style={styles.card}>
         <h1 style={styles.title}>🚚 ShipEase</h1>
         <h2 style={styles.subtitle}>Register</h2>
-        
         {error && <div style={styles.error}>{error}</div>}
-        
         <form onSubmit={handleRegister}>
           <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} style={styles.input} required />
           <input type="email" placeholder="Email" value={email} onChange={(e) => handleEmailChange(e.target.value)} style={styles.input} required />
@@ -93,47 +84,31 @@ const Register = () => {
               {phoneError || 'Valid 10-digit phone number'}
             </p>
           )}
-
           <div style={styles.roleWrap}>
             <label style={styles.roleLabel}>Register As</label>
             <div style={styles.roleOptions}>
               <label style={styles.roleOption}>
-                <input
-                  type="radio"
-                  value="user"
-                  checked={role === 'user'}
-                  onChange={() => setRole('user')}
-                />
+                <input type="radio" value="user" checked={role === 'user'} onChange={() => setRole('user')} />
                 <span>User</span>
               </label>
               <label style={styles.roleOption}>
-                <input
-                  type="radio"
-                  value="driver"
-                  checked={role === 'driver'}
-                  onChange={() => setRole('driver')}
-                />
+                <input type="radio" value="driver" checked={role === 'driver'} onChange={() => setRole('driver')} />
                 <span>Driver</span>
               </label>
             </div>
           </div>
-
           {role === 'driver' && (
-            <select
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value)}
-              style={styles.input}
-            >
+            <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value)} style={styles.input}>
               <option value="two_wheeler">2 Wheeler</option>
               <option value="small_tempo">Small Tempo</option>
               <option value="truck">Truck</option>
             </select>
           )}
-
           <input type="password" placeholder="Password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} style={styles.input} minLength={6} required />
-          <button type="submit" style={styles.button} disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Registering...' : 'Register'}
+          </button>
         </form>
-
         <p style={styles.link}>
           Already have an account? <Link to="/login" style={styles.anchor}>Login here</Link>
         </p>

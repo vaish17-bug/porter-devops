@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 import { Link } from 'react-router-dom';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import API from '../utils/api';
 
 const serviceRules = {
   bike: {
@@ -123,8 +124,9 @@ const Booking = () => {
     }
 
     try {
-      const response = await axios.post(
-        'http://localhost:5002/bookings',
+      // ✅ Fixed
+const response = await axios.post(
+  `${API.BOOKING_SERVICE}/bookings`,
         {
           userId: user?.id,
           pickup,
