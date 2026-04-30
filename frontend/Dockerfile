@@ -9,7 +9,7 @@ RUN npm install
 COPY . .
 
 ARG REACT_APP_USER_SERVICE_URL
-ENV REACT_APP_USER_SERVICE_URL=${REACT_APP_USER_SERVICE_URL:-http://localhost:5001}
+ENV REACT_APP_USER_SERVICE_URL=${REACT_APP_USER_SERVICE_URL:-https://porter-user-service.onrender.com}
 
 RUN npm run build
 
