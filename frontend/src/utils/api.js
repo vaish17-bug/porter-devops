@@ -1,4 +1,4 @@
-export const USER_SERVICE = process.env.REACT_APP_USER_SERVICE_URL || 'http://localhost:5001';
+export const USER_SERVICE = process.env.REACT_APP_USER_SERVICE_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
 export const BOOKING_SERVICE = process.env.REACT_APP_BOOKING_SERVICE_URL || 'http://localhost:5002';
 export const DRIVER_SERVICE = process.env.REACT_APP_DRIVER_SERVICE_URL || 'http://localhost:5003';
 export const TRACKING_SERVICE = process.env.REACT_APP_TRACKING_SERVICE_URL || 'http://localhost:5004';

@@ -8,6 +8,9 @@ RUN npm install
 
 COPY . .
 
+ARG REACT_APP_USER_SERVICE_URL
+ENV REACT_APP_USER_SERVICE_URL=${REACT_APP_USER_SERVICE_URL:-http://localhost:5001}
+
 RUN npm run build
 
 FROM node:20-alpine

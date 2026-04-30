@@ -16,7 +16,13 @@ app.use(morgan('combined'));
 app.use(express.json());
 
 // Database Connection
-mongoose.connect(process.env.MONGODB_URI, {
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+  console.error('❌ MONGODB_URI is missing. Set MONGODB_URI in Docker Compose or .env before starting the service.');
+  process.exit(1);
+}
+
+mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
