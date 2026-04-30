@@ -17,17 +17,21 @@ app.use(express.json());
 
 // Database Connection
 const mongoUri = process.env.MONGODB_URI;
-if (!mongoUri) {
-  console.error('❌ MONGODB_URI is missing. Set MONGODB_URI in Docker Compose or .env before starting the service.');
-  process.exit(1);
-}
+const connectDb = async () => {
+  if (!mongoUri) {
+    const message = '❌ MONGODB_URI is missing. Set MONGODB_URI in Docker Compose or .env before starting the service.';
+    console.error(message);
+    if (require.main === module) {
+      process.exit(1);
+    }
+    throw new Error(message);
+  }
 
-mongoose.connect(mongoUri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ User Service MongoDB connected'))
-.catch(err => console.error('❌ MongoDB Connection Error:', err));
+  return mongoose.connect(mongoUri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+};
 
 // Routes
 app.use('/auth', authRoutes);
@@ -58,6 +62,10 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5001;
 
 if (require.main === module) {
+  connectDb()
+    .then(() => console.log('✅ User Service MongoDB connected'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
   app.listen(PORT, () => {
     console.log(`🚀 User Service running on port ${PORT}`);
   });
