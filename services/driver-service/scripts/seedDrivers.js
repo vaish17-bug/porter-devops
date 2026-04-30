@@ -24,11 +24,17 @@ const seedDrivers = async () => {
 
     await Driver.insertMany(drivers);
     console.log('✅ Drivers seeded successfully!');
-    process.exit(0);
+    await mongoose.connection.close();
+    return;
   } catch (error) {
     console.error('❌ Seed error:', error);
+    await mongoose.connection.close().catch(() => {});
     process.exit(1);
   }
 };
 
-seedDrivers();
+module.exports = { seedDrivers };
+
+if (require.main === module) {
+  seedDrivers();
+}

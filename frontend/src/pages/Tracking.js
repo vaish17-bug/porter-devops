@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
 import TrackingMap from '../components/TrackingMap';
+import API from '../utils/api';
 
 const Tracking = ({ bookingId: paramBookingId }) => {
   const { user, token } = useContext(AuthContext);
@@ -19,7 +20,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
   const fetchUserBookings = useCallback(async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5002/bookings/user/${user?.id}`,
+        `${API.BOOKING_SERVICE}/bookings/user/${user?.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setBookings(response.data.bookings);
@@ -44,7 +45,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
     const interval = setInterval(async () => {
       try {
         const updateResponse = await axios.get(
-          `http://localhost:5004/tracking/${bookingId}`,
+          `${API.TRACKING_SERVICE}/tracking/${bookingId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setTracking(updateResponse.data.tracking);
@@ -64,7 +65,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
       }
 
       try {
-        const response = await axios.get('http://localhost:5003/drivers', {
+        const response = await axios.get(`${API.DRIVER_SERVICE}/drivers`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -90,7 +91,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
 
     try {
       const response = await axios.get(
-        `http://localhost:5004/tracking/${bookingId}`,
+        `${API.TRACKING_SERVICE}/tracking/${bookingId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTracking(response.data.tracking);
@@ -115,7 +116,7 @@ const Tracking = ({ bookingId: paramBookingId }) => {
 
     try {
       const response = await axios.get(
-        `http://localhost:5004/tracking/${booking.bookingId}`,
+        `${API.TRACKING_SERVICE}/tracking/${booking.bookingId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTracking(response.data.tracking);

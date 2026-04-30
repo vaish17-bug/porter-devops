@@ -1,0 +1,58 @@
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 3ad17bb..9a5aced 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -1,4 +1,3 @@[m
+[31m-<<<<<<< HEAD[m
+ # Logs[m
+ logs[m
+ *.log[m
+[36m@@ -138,14 +137,3 @@[m [mdist[m
+ # Vite logs files[m
+ vite.config.js.timestamp-*[m
+ vite.config.ts.timestamp-*[m
+[31m-=======[m
+[31m-node_modules/[m
+[31m-.env[m
+[31m-.env.local[m
+[31m-.DS_Store[m
+[31m-build/[m
+[31m-dist/[m
+[31m-*.log[m
+[31m-.vscode/[m
+[31m-.idea/[m
+[31m->>>>>>> main[m
+[1mdiff --git a/README.md b/README.md[m
+[1mindex fbb2d8b..a4ef0cc 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,7 +1,5 @@[m
+[31m-<<<<<<< HEAD[m
+ # porter-devops[m
+ Microservices-based delivery platform with Docker, GitHub Actions CI/CD pipeline — DevOps Mini Project (Sem II 2025-26)[m
+[31m-=======[m
+ # 🚚 Mini Porter - Delivery System[m
+ [m
+ A microservices-based delivery platform inspired by Porter with DevOps best practices.[m
+[36m@@ -214,3 +212,21 @@[m [mcd frontend && npm install && npm start[m
+ | Message queue (RabbitMQ) | Future |[m
+ | Kubernetes deployment | Future |[m
+ [m
+[32m+[m[32m## 🤝 Team Roles[m
+[32m+[m
+[32m+[m[32m- **Backend:** Microservices development, API contracts[m
+[32m+[m[32m- **Frontend:** React UI, location selection, live tracking[m
+[32m+[m[32m- **DevOps:** Docker Compose, CI/CD pipeline, deployment[m
+[32m+[m
+[32m+[m[32m## 📞 Contact & Support[m
+[32m+[m
+[32m+[m[32mFor issues or questions:[m
+[32m+[m[32m- Check [Troubleshooting Guide](docs/TROUBLESHOOTING.md)[m
+[32m+[m[32m- Review service logs: `docker-compose logs service-name`[m
+[32m+[m[32m- Verify all services healthy: `GET /health` on each service[m
+[32m+[m
+[32m+[m[32m---[m
+[32m+[m
+[32m+[m[32m**Submission Date:** Wednesday (Deadline)[m[41m  [m
+[32m+[m[32m**Project Status:** Ready for Demo ✅[m
+[32m+[m

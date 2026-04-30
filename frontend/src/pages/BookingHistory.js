@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../utils/AuthContext';
+import API from '../utils/api';
 
 const BookingHistory = () => {
   const { user, token } = useContext(AuthContext);
@@ -13,7 +14,7 @@ const BookingHistory = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:5002/bookings/user/${user?.id}`,
+        `${API.BOOKING_SERVICE}/bookings/user/${user?.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setBookings(response.data.bookings || []);
